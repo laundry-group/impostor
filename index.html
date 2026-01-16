@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Un juego de fiesta con ideas ocultas y pistas astutas">
+    <meta name="theme-color" content="#b7202f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Impostor">
+    <title>Impostor - Juego de palabras</title>
+    
+    <!-- Manifest para PWA -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Iconos para iOS -->
+    <link rel="apple-touch-icon" href="assets/icons/icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="assets/icons/icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/icons/icon-192x192.png">
+    
+    <!-- Icono para navegadores -->
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/icon-72x72.png">
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app"></div>
+    <script src="app.js"></script>
+    
+    <!-- Registrar Service Worker con manejo de actualizaciones -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            let refreshing = false;
+            
+            // Detectar cuando el SW toma control
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (refreshing) return;
+                refreshing = true;
+                window.location.reload();
+            });
+            
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('Service Worker registrado:', registration);
+                        
+                        // Verificar actualizaciones cada hora
+                        setInterval(() => {
+                            registration.update();
+                        }, 3600000);
+                        
+                        // Escuchar mensajes del SW
+                        navigator.serviceWorker.addEventListener('message', event => {
+                            if (event.data && event.data.type === 'SW_UPDATED') {
+                                console.log('Nueva versión disponible');
+                                // Mostrar notificación sutil (opcional)
+                                if (confirm('Hay una nueva versión de la app disponible. ¿Actualizar ahora?')) {
+                                    window.location.reload();
+                                }
+                            }
+                        });
+                    })
+                    .catch(error => {
+                        console.log('Error al registrar Service Worker:', error);
+                    });
+            });
+            
+            // Prevenir pérdida de datos en recarga
+            window.addEventListener('beforeunload', (e) => {
+                // El estado ya se guarda automáticamente en localStorage
+            });
+        }
+        
+        // Detectar si la app está instalada
+        window.addEventListener('appinstalled', () => {
+            console.log('App instalada correctamente');
+            localStorage.setItem('app_installed', 'true');
+        });
+        
+        // Prevenir zoom en iOS
+        document.addEventListener('gesturestart', function(e) {
+            e.preventDefault();
+        });
+    </script>
+</body>
+</html>
