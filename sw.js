@@ -1,14 +1,21 @@
-const CACHE_NAME = 'impostor-v2';
-const ASSETS_CACHE = 'impostor-assets-v2';
+const CACHE_NAME = 'impostor-v3';
+const ASSETS_CACHE = 'impostor-assets-v3';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/style.css',
-  '/app.js',
-  '/assets/logo_laundry_impostor.png',
-  '/assets/logo_impostor_header.png',
-  '/assets/icons/icon-192x192.png',
-  '/assets/icons/icon-512x512.png'
+  './',
+  './index.html',
+  './style.css',
+  './app.js',
+  './manifest.json',
+  './assets/logo_laundry_impostor.png',
+  './assets/logo_impostor_header.png',
+  './assets/icons/icon-72x72.png',
+  './assets/icons/icon-96x96.png',
+  './assets/icons/icon-128x128.png',
+  './assets/icons/icon-144x144.png',
+  './assets/icons/icon-152x152.png',
+  './assets/icons/icon-192x192.png',
+  './assets/icons/icon-384x384.png',
+  './assets/icons/icon-512x512.png'
 ];
 
 // Instalar Service Worker y cachear recursos
