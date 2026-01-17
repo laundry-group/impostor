@@ -77,8 +77,8 @@ const palabrasPorCategoria = {
     'Animales': ['Perro', 'Gato', 'León', 'Elefante', 'Tigre', 'Jirafa', 'Mono', 'Oso', 'Lobo', 'Zorro', 'Caballo', 'Vaca', 'Cerdo', 'Oveja', 'Conejo', 'Ratón', 'Pájaro', 'Pez', 'Tiburón', 'Ballena'],
     'Comida': ['Pizza', 'Hamburguesa', 'Pasta', 'Sushi', 'Tacos', 'Ensalada', 'Sopa', 'Pan', 'Queso', 'Pollo', 'Carne', 'Pescado', 'Arroz', 'Papas', 'Helado', 'Chocolate', 'Café', 'Té', 'Jugo', 'Agua'],
     'Objetos': ['Mesa', 'Silla', 'Lápiz', 'Libro', 'Teléfono', 'Computadora', 'Reloj', 'Llave', 'Puerta', 'Ventana', 'Cama', 'Sofá', 'Lámpara', 'Espejo', 'Cuchillo', 'Plato', 'Vaso', 'Botella', 'Caja', 'Bolsa'],
-    'Películas': ['Titanic', 'Avatar', 'Matrix', 'Inception', 'Gladiador', 'Rocky', 'Casablanca', 'Psycho', 'Alien', 'Terminator', 'Superman', 'Batman', 'Spiderman', 'Jumanji', 'Coco', 'Frozen', 'Shrek', 'Toy Story', 'Nemo', 'Up'],
-    'Deportes': ['Fútbol', 'Baloncesto', 'Tenis', 'Natación', 'Ciclismo', 'Boxeo', 'Golf', 'Béisbol', 'Volleyball', 'Rugby', 'Hockey', 'Esquí', 'Surf', 'Atletismo', 'Gimnasia', 'Yoga', 'Ping Pong', 'Bádminton', 'Karate', 'Escalada'],
+    'Películas': ['Titanic', 'Avatar', 'Matrix', 'Gladiador', 'Rocky', 'Alien', 'Terminator', 'Superman', 'Batman', 'Spiderman', 'Jumanji', 'Coco', 'Frozen', 'Shrek', 'Toy Story', 'Nemo', 'Up'],
+    'Deportes': ['Fútbol', 'Baloncesto', 'Tenis', 'Natación', 'Ciclismo', 'Boxeo', 'Golf', 'Béisbol', 'Volleyball', 'Rugby', 'Hockey', 'Esquí', 'Surf', 'Atletismo', 'Gimnasia', 'Yoga', 'Ping Pong', 'Karate', 'Escalada'],
     'Oficina': ['Escritorio', 'Computadora', 'Impresora', 'Reunión', 'Café', 'Jefe', 'Empleado', 'Contrato', 'Proyecto', 'Presentación', 'Email', 'Teléfono', 'Carpeta', 'Agenda', 'Calculadora', 'Grapadora', 'Post-it', 'Pizarra', 'Factura', 'Presupuesto'],
     'Familia': ['Madre', 'Padre', 'Hermano', 'Hermana', 'Hijo', 'Hija', 'Abuelo', 'Abuela', 'Tío', 'Tía', 'Primo', 'Prima', 'Sobrino', 'Sobrina', 'Nieto', 'Nieta', 'Suegro', 'Suegra', 'Cuñado', 'Cuñada'],
     'Viajes': ['Maleta', 'Pasaporte', 'Avión', 'Hotel', 'Mapa', 'Turista', 'Foto', 'Recuerdo', 'Guía', 'Ticket', 'Camping', 'Crucero', 'Safari', 'Mochila', 'Visa', 'Itinerario', 'Hostal', 'Excursión', 'Aduana', 'Equipaje'],
@@ -221,9 +221,6 @@ function renderWelcome() {
 function renderConfig() {
     document.body.style.background = '#fef6ea';
     
-    // Verificar si los nombres están configurados
-    const nombresConfigurados = state.nombresEditados && state.nombres.length > 0;
-    
     // Mostrar nombres de categorías o cantidad
     let categoriasTexto;
     let categoriasFontSize = '1.3rem'; // Tamaño por defecto
@@ -262,9 +259,7 @@ function renderConfig() {
             </div>
             
             <div style="flex-shrink:0;margin-top:16px;">
-                ${nombresConfigurados ? 
-                    UI.primaryButton('Iniciar juego', 'iniciarJuego()') : 
-                    UI.primaryButtonDisabled('Iniciar juego', '⚠️ Primero configura los nombres de los jugadores')}
+                ${UI.primaryButton('Iniciar juego', 'iniciarJuego()')}
             </div>
         </div>
     `;
@@ -501,36 +496,42 @@ function renderResultados() {
     const content = `
         ${UI.header(false)}
         
-        <div style="flex:1;overflow-y:auto;padding:20px;">
-            ${UI.title('Resultados')}
-        
-        <div style="margin:32px 0;padding:32px;background:${bg};border-radius:20px;color:${color};font-size:1.3rem;font-weight:bold;text-align:center;line-height:1.6;">
-            ${resultado}
-        </div>
-        
-        <div style="margin:12px 0;padding:20px;background:#f5e8d3;border-radius:16px;">
-            <div style="color:#6b5844;font-size:1rem;margin-bottom:16px;text-align:left;">Votación:</div>
-            <table style="width:100%;border-collapse:collapse;">
-                ${state.nombres.map((nombre, i) => {
-                    const votos = state.votos.filter(v => v === i).length;
-                    const rolText = state.roles[i] === 'impostor' ? '👤 Impostor' : '👥 Ciudadano';
-                    return `
-                        <tr style="border-bottom:1px solid rgba(107, 88, 68, 0.2);">
-                            <td style="padding:8px 8px 8px 0;text-align:left;color:#2c2416;">${nombre}</td>
-                            <td style="padding:8px;text-align:center;color:#6b5844;white-space:nowrap;">${votos} votos</td>
-                            <td style="padding:8px 0 8px 8px;text-align:right;color:${state.roles[i] === 'impostor' ? '#b7202f' : '#2d7a2d'};font-size:0.9rem;white-space:nowrap;">${rolText}</td>
-                        </tr>
-                    `;
-                }).join('')}
-            </table>
-        </div>
-        
-        <div style="margin:16px 0;padding:16px;background:#e5f5e5;border-radius:12px;">
-            <div style="color:#2d7a2d;font-size:1rem;margin-bottom:8px;">La palabra secreta era:</div>
-            <div style="color:#2c2416;font-size:1.5rem;font-weight:bold;">${state.palabraSecreta}</div>
-        </div>
-        
-        ${UI.primaryButton('Nuevo juego', 'nuevoJuego()')}
+        <div style="flex:1;display:flex;flex-direction:column;padding:20px;overflow:hidden;">
+            <div style="flex-shrink:0;">
+                ${UI.title('Resultados')}
+            
+                <div style="margin:20px 0 16px 0;padding:24px;background:${bg};border-radius:20px;color:${color};font-size:1.2rem;font-weight:bold;text-align:center;line-height:1.5;">
+                    ${resultado}
+                </div>
+            </div>
+            
+            <div style="flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;">
+                <div style="margin:12px 0;padding:20px;background:#f5e8d3;border-radius:16px;">
+                    <div style="color:#6b5844;font-size:1rem;margin-bottom:16px;text-align:left;">Votación:</div>
+                    <table style="width:100%;border-collapse:collapse;">
+                        ${state.nombres.map((nombre, i) => {
+                            const votos = state.votos.filter(v => v === i).length;
+                            const rolText = state.roles[i] === 'impostor' ? '👤 Impostor' : '👥 Ciudadano';
+                            return `
+                                <tr style="border-bottom:1px solid rgba(107, 88, 68, 0.2);">
+                                    <td style="padding:8px 8px 8px 0;text-align:left;color:#2c2416;">${nombre}</td>
+                                    <td style="padding:8px;text-align:center;color:#6b5844;white-space:nowrap;">${votos} votos</td>
+                                    <td style="padding:8px 0 8px 8px;text-align:right;color:${state.roles[i] === 'impostor' ? '#b7202f' : '#2d7a2d'};font-size:0.9rem;white-space:nowrap;">${rolText}</td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </table>
+                </div>
+                
+                <div style="margin:16px 0;padding:16px;background:#e5f5e5;border-radius:12px;">
+                    <div style="color:#2d7a2d;font-size:1rem;margin-bottom:8px;">La palabra secreta era:</div>
+                    <div style="color:#2c2416;font-size:1.5rem;font-weight:bold;">${state.palabraSecreta}</div>
+                </div>
+            </div>
+            
+            <div style="flex-shrink:0;margin-top:12px;">
+                ${UI.primaryButton('Nuevo juego', 'nuevoJuego()')}
+            </div>
         </div>
     `;
     
@@ -643,7 +644,7 @@ function updateNombre(idx, value) {
 }
 
 function anadirJugador() {
-    if (state.jugadores < 12) {
+    if (state.jugadores < 15) {
         state.jugadores++;
         state.nombres.push(`Jugador ${state.jugadores}`);
         state.nombresEditados = false;
@@ -664,7 +665,7 @@ function eliminarJugador() {
 
 // ==================== LÓGICA: CONFIGURACIÓN ====================
 function updateJugadores(delta) {
-    state.jugadores = Math.max(3, Math.min(12, state.jugadores + delta));
+    state.jugadores = Math.max(3, Math.min(15, state.jugadores + delta));
     if (state.impostores >= state.jugadores) {
         state.impostores = state.jugadores - 1;
     }
