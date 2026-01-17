@@ -1,5 +1,5 @@
-const CACHE_NAME = 'impostor-v3';
-const ASSETS_CACHE = 'impostor-assets-v3';
+const CACHE_NAME = 'impostor-v3.0.1';
+const ASSETS_CACHE = 'impostor-assets-v3.0.1';
 const urlsToCache = [
   './',
   './index.html',

@@ -31,6 +31,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             let refreshing = false;
+            let deferredPrompt = null;
             
             // Detectar cuando el SW toma control
             navigator.serviceWorker.addEventListener('controllerchange', () => {
@@ -39,43 +40,189 @@
                 window.location.reload();
             });
             
+            // Capturar el evento de instalación PWA
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                console.log('📱 PWA instalable detectada');
+                
+                // Mostrar botón de instalación
+                showInstallButton();
+            });
+            
+            // Detectar cuando la PWA se instaló exitosamente
+            window.addEventListener('appinstalled', () => {
+                console.log('✅ PWA instalada exitosamente');
+                deferredPrompt = null;
+                hideInstallButton();
+                showInstallSuccessNotification();
+            });
+
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
+                navigator.serviceWorker.register('./sw.js')
                     .then(registration => {
                         console.log('Service Worker registrado:', registration);
                         
-                        // Verificar actualizaciones cada hora
+                        // Verificar actualizaciones cada 30 minutos
                         setInterval(() => {
                             registration.update();
-                        }, 3600000);
+                        }, 1800000);
+                        
+                        // Detectar nueva versión disponible
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            console.log('⚡ Nueva versión detectada');
+                            
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    // Hay una nueva versión lista
+                                    showUpdateNotification(newWorker);
+                                }
+                            });
+                        });
                         
                         // Escuchar mensajes del SW
                         navigator.serviceWorker.addEventListener('message', event => {
                             if (event.data && event.data.type === 'SW_UPDATED') {
                                 console.log('Nueva versión disponible');
-                                // Mostrar notificación sutil (opcional)
-                                if (confirm('Hay una nueva versión de la app disponible. ¿Actualizar ahora?')) {
-                                    window.location.reload();
-                                }
+                                showUpdateNotification();
                             }
                         });
                     })
                     .catch(error => {
                         console.log('Error al registrar Service Worker:', error);
                     });
+                    
+                // Para iOS: mostrar botón después de 3 segundos si no se disparó beforeinstallprompt
+                setTimeout(() => {
+                    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+                    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+                    
+                    if (isIOS && !isStandalone && !deferredPrompt) {
+                        console.log('📱 iOS detectado - mostrando instrucciones');
+                        showInstallButton(true);
+                    }
+                }, 3000);
             });
+            
+            // Mostrar botón de instalación
+            function showInstallButton(isIOS = false) {
+                let installBtn = document.getElementById('install-pwa-btn');
+                if (!installBtn) {
+                    installBtn = document.createElement('button');
+                    installBtn.id = 'install-pwa-btn';
+                    installBtn.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#4caf50;color:#fff;border:none;padding:12px 24px;border-radius:12px;font-weight:700;cursor:pointer;font-size:14px;box-shadow:0 4px 12px rgba(0,0,0,0.3);z-index:1000;display:flex;align-items:center;gap:8px;animation:slideUp 0.3s ease-out;';
+                    
+                    if (isIOS) {
+                        installBtn.innerHTML = '<span style="font-size:20px;">📲</span><span>Compartir → Añadir a inicio</span>';
+                        installBtn.style.background = '#007aff';
+                        installBtn.style.pointerEvents = 'none';
+                    } else {
+                        installBtn.innerHTML = '<span style="font-size:20px;">📱</span><span>Instalar App</span>';
+                        installBtn.addEventListener('click', async () => {
+                            if (deferredPrompt) {
+                                deferredPrompt.prompt();
+                                const result = await deferredPrompt.userChoice;
+                                console.log('Usuario decidió:', result.outcome);
+                                if (result.outcome === 'accepted') {
+                                    console.log('✅ Usuario aceptó instalar');
+                                }
+                                deferredPrompt = null;
+                                hideInstallButton();
+                            }
+                        });
+                    }
+                    
+                    document.body.appendChild(installBtn);
+                }
+                installBtn.style.display = 'flex';
+            }
+            
+            // Ocultar botón de instalación
+            function hideInstallButton() {
+                const installBtn = document.getElementById('install-pwa-btn');
+                if (installBtn) {
+                    installBtn.style.display = 'none';
+                }
+            }
+            
+            // Mostrar notificación de instalación exitosa
+            function showInstallSuccessNotification() {
+                const notification = document.createElement('div');
+                notification.id = 'install-success';
+                notification.innerHTML = `
+                    <div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#4caf50;color:#fff;padding:24px 32px;text-align:center;z-index:9999;box-shadow:0 8px 16px rgba(0,0,0,0.4);border-radius:12px;max-width:90%;animation:slideIn 0.3s ease-out;">
+                        <div style="font-size:48px;margin-bottom:16px;">🎉</div>
+                        <div style="font-weight:700;font-size:18px;margin-bottom:8px;">¡App Instalada!</div>
+                        <div style="font-size:14px;opacity:0.9;margin-bottom:16px;">El acceso directo se agregó a tu pantalla de inicio</div>
+                        <button id="dismiss-install" style="background:#fff;color:#4caf50;border:none;padding:10px 24px;border-radius:6px;font-weight:700;cursor:pointer;min-height:40px;font-size:14px;">¡Entendido!</button>
+                    </div>
+                    <style>
+                        @keyframes slideIn {
+                            from { transform: translate(-50%,-50%) scale(0.8); opacity: 0; }
+                            to { transform: translate(-50%,-50%) scale(1); opacity: 1; }
+                        }
+                        @keyframes slideUp {
+                            from { transform: translateY(100px); opacity: 0; }
+                            to { transform: translateY(0); opacity: 1; }
+                        }
+                    </style>
+                `;
+                document.body.appendChild(notification);
+                
+                document.getElementById('dismiss-install').addEventListener('click', () => {
+                    notification.remove();
+                });
+                
+                // Auto-cerrar después de 5 segundos
+                setTimeout(() => {
+                    if (document.getElementById('install-success')) {
+                        notification.remove();
+                    }
+                }, 5000);
+            }
+            
+            // Mostrar banner de actualización
+            function showUpdateNotification(newWorker) {
+                // Evitar mostrar múltiples banners
+                if (document.getElementById('update-banner')) return;
+                
+                const banner = document.createElement('div');
+                banner.id = 'update-banner';
+                banner.innerHTML = `
+                    <div style="position:fixed;top:0;left:0;right:0;background:#b7202f;color:#fff;padding:16px;text-align:center;z-index:9999;box-shadow:0 4px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;animation:slideDown 0.3s ease-out;">
+                        <span style="font-weight:600;font-size:14px;">🎉 Nueva versión disponible</span>
+                        <button id="update-btn" style="background:#fff;color:#b7202f;border:none;padding:8px 20px;border-radius:8px;font-weight:700;cursor:pointer;min-height:36px;font-size:14px;box-shadow:0 2px 4px rgba(0,0,0,0.2);">Actualizar ahora</button>
+                        <button id="dismiss-update-btn" style="background:transparent;color:#fff;border:2px solid #fff;padding:6px 16px;border-radius:8px;font-weight:600;cursor:pointer;min-height:36px;font-size:14px;">Más tarde</button>
+                    </div>
+                    <style>
+                        @keyframes slideDown {
+                            from { transform: translateY(-100%); opacity: 0; }
+                            to { transform: translateY(0); opacity: 1; }
+                        }
+                    </style>
+                `;
+                document.body.appendChild(banner);
+                
+                document.getElementById('update-btn').addEventListener('click', () => {
+                    if (newWorker) {
+                        newWorker.postMessage({ type: 'SKIP_WAITING' });
+                    } else {
+                        window.location.reload();
+                    }
+                    banner.remove();
+                });
+                
+                document.getElementById('dismiss-update-btn').addEventListener('click', () => {
+                    banner.remove();
+                });
+            }
             
             // Prevenir pérdida de datos en recarga
             window.addEventListener('beforeunload', (e) => {
                 // El estado ya se guarda automáticamente en localStorage
             });
         }
-        
-        // Detectar si la app está instalada
-        window.addEventListener('appinstalled', () => {
-            console.log('App instalada correctamente');
-            localStorage.setItem('app_installed', 'true');
-        });
         
         // Prevenir zoom en iOS
         document.addEventListener('gesturestart', function(e) {
