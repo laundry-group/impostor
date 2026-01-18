@@ -200,6 +200,11 @@ const UI = {
 function renderWelcome() {
     document.body.style.background = '#000';
     
+    // Mostrar botón de instalación en la pantalla de bienvenida
+    if (window.showInstallButtonIfAvailable) {
+        window.showInstallButtonIfAvailable();
+    }
+    
     const content = `
         <div style="margin-bottom:32px;">
             <div style="position:relative;max-width:280px;width:80%;margin:0 auto 16px auto;border-radius:24px;overflow:hidden;background:radial-gradient(circle at center, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%);">
@@ -219,6 +224,10 @@ function renderWelcome() {
 
 // ==================== PANTALLA: CONFIGURACIÓN ====================
 function renderConfig() {
+    // Ocultar botón de instalación cuando se sale de la pantalla de bienvenida
+    if (window.hideInstallButtonTemp) {
+        window.hideInstallButtonTemp();
+    }
     document.body.style.background = '#fef6ea';
     
     // Mostrar nombres de categorías o cantidad

@@ -114,9 +114,11 @@
                     installBtn.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#4caf50;color:#fff;border:none;padding:12px 24px;border-radius:12px;font-weight:700;cursor:pointer;font-size:14px;box-shadow:0 4px 12px rgba(0,0,0,0.3);z-index:1000;display:flex;align-items:center;gap:8px;animation:slideUp 0.3s ease-out;';
                     
                     if (isIOS) {
-                        installBtn.innerHTML = '<span style="font-size:20px;">📲</span><span>Compartir → Añadir a inicio</span>';
+                        installBtn.innerHTML = '<span style="font-size:20px;">📲</span><span>Instalar App</span>';
                         installBtn.style.background = '#007aff';
-                        installBtn.style.pointerEvents = 'none';
+                        installBtn.addEventListener('click', () => {
+                            showIOSInstructions();
+                        });
                     } else {
                         installBtn.innerHTML = '<span style="font-size:20px;">📱</span><span>Instalar App</span>';
                         installBtn.addEventListener('click', async () => {
@@ -144,6 +146,70 @@
                 if (installBtn) {
                     installBtn.style.display = 'none';
                 }
+            }
+            
+            // Exponer funciones globalmente para que puedan ser llamadas desde app.js
+            window.showInstallButtonIfAvailable = function() {
+                const installBtn = document.getElementById('install-pwa-btn');
+                if (installBtn) {
+                    installBtn.style.display = 'flex';
+                }
+            };
+            
+            window.hideInstallButtonTemp = function() {
+                hideInstallButton();
+            };
+            
+            // Mostrar instrucciones para iOS
+            function showIOSInstructions() {
+                const modal = document.createElement('div');
+                modal.id = 'ios-instructions';
+                modal.innerHTML = `
+                    <div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:10000;display:flex;align-items:center;justify-content:center;animation:fadeIn 0.3s ease-out;" onclick="this.remove()">
+                        <div style="background:#fff;border-radius:16px;padding:24px;max-width:90%;max-height:90%;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.3);animation:slideIn 0.3s ease-out;" onclick="event.stopPropagation()">
+                            <div style="text-align:center;margin-bottom:20px;">
+                                <div style="font-size:48px;margin-bottom:12px;">📲</div>
+                                <h2 style="color:#2c2416;margin:0 0 8px 0;font-size:20px;">Instalar en iPhone/iPad</h2>
+                                <p style="color:#6b5844;margin:0;font-size:14px;">Sigue estos pasos:</p>
+                            </div>
+                            
+                            <div style="text-align:left;color:#2c2416;line-height:1.6;">
+                                <div style="display:flex;align-items:flex-start;margin-bottom:16px;padding:12px;background:#f5e8d3;border-radius:8px;">
+                                    <div style="font-size:24px;font-weight:bold;color:#b7202f;margin-right:12px;min-width:32px;">1</div>
+                                    <div>
+                                        <div style="font-weight:600;margin-bottom:4px;">Toca el botón Compartir</div>
+                                        <div style="font-size:14px;color:#6b5844;">En Safari, toca el ícono <span style="font-size:20px;">□↑</span> en la barra inferior</div>
+                                    </div>
+                                </div>
+                                
+                                <div style="display:flex;align-items:flex-start;margin-bottom:16px;padding:12px;background:#f5e8d3;border-radius:8px;">
+                                    <div style="font-size:24px;font-weight:bold;color:#b7202f;margin-right:12px;min-width:32px;">2</div>
+                                    <div>
+                                        <div style="font-weight:600;margin-bottom:4px;">Selecciona "Añadir a inicio"</div>
+                                        <div style="font-size:14px;color:#6b5844;">Busca la opción con el ícono <span style="font-size:20px;">➕</span> en el menú</div>
+                                    </div>
+                                </div>
+                                
+                                <div style="display:flex;align-items:flex-start;margin-bottom:16px;padding:12px;background:#f5e8d3;border-radius:8px;">
+                                    <div style="font-size:24px;font-weight:bold;color:#b7202f;margin-right:12px;min-width:32px;">3</div>
+                                    <div>
+                                        <div style="font-weight:600;margin-bottom:4px;">Confirma</div>
+                                        <div style="font-size:14px;color:#6b5844;">Toca "Añadir" y la app aparecerá en tu pantalla de inicio</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <button onclick="this.closest('#ios-instructions').remove()" style="width:100%;background:#007aff;color:#fff;border:none;padding:14px;border-radius:10px;font-weight:700;cursor:pointer;font-size:16px;margin-top:16px;">¡Entendido!</button>
+                        </div>
+                    </div>
+                    <style>
+                        @keyframes fadeIn {
+                            from { opacity: 0; }
+                            to { opacity: 1; }
+                        }
+                    </style>
+                `;
+                document.body.appendChild(modal);
             }
             
             // Mostrar notificación de instalación exitosa
