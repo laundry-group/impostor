@@ -93,6 +93,17 @@ html {
     background: #ead6ba;
 }
 
+.btn-secondary.disabled {
+    background: #e8e8e8;
+    color: #999;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.btn-secondary.disabled:active {
+    transform: none;
+}
+
 .back-btn {
     background: none;
     border: none;
@@ -367,11 +378,56 @@ html {
     background: #8b1821;
 }
 
-/* ==================== OTROS ==================== */
-.checkbox {
-    width: 24px;
-    height: 24px;
+/* ==================== SWITCH (iOS style) ==================== */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 52px;
+    height: 30px;
+    flex-shrink: 0;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
     cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: 0.3s;
+    border-radius: 30px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 24px;
+    width: 24px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+input:checked + .slider {
+    background-color: #b7202f;
+}
+
+input:checked + .slider:before {
+    transform: translateX(22px);
+}
+
+.slider:active:before {
+    width: 28px;
 }
 
 /* ==================== REVELACIÓN DE ROLES ==================== */
@@ -634,6 +690,9 @@ html {
     justify-content: center;
     position: relative;
     flex-shrink: 0;
+    width: 100%;
+    margin: 0;
+    box-sizing: border-box;
 }
 
 .header-logo {
@@ -659,4 +718,63 @@ html {
 
 .header-back-btn:active {
     transform: scale(0.95);
+}
+
+/* ==================== CONFIGURACIÓN DE TIEMPO ==================== */
+.time-option {
+    background: #f5e8d3;
+    border-radius: 16px;
+    padding: 16px 24px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border: 2px solid transparent;
+}
+
+.time-option:hover {
+    background: #ead6ba;
+}
+
+.time-option:active {
+    transform: scale(0.98);
+}
+
+.time-option.selected {
+    background: #fff9e6;
+    border-color: #b7202f;
+    box-shadow: 0 4px 12px rgba(183, 32, 47, 0.2);
+}
+
+/* ==================== ANIMACIONES ==================== */
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.05);
+        opacity: 0.9;
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
 }

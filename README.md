@@ -1,44 +1,53 @@
-# Impostor ¿Quién? - Juego de palabras PWA
+# Impostor - Juego de palabras PWA
 
-Una Progressive Web App (PWA) instalable para jugar al Impostor en cualquier dispositivo. Inspirado en Spyfall, con diseño elegante tipo menú de restaurante.
+Una Progressive Web App (PWA) instalable para jugar al Impostor en cualquier dispositivo. Un juego de fiesta con ideas ocultas y pistas astutas, inspirado en Spyfall.
 
 ## ✨ Características principales
 
-- 🎮 **Juego completo de Impostor/Spyfall**: 3-12 jugadores, múltiples categorías
+- 🎮 **Juego completo de Impostor/Spyfall**: 3-15 jugadores, múltiples categorías
 - 📱 **PWA instalable**: Funciona como app nativa en móviles y escritorio
 - 🔄 **Offline-first**: Funciona sin conexión una vez instalado
 - 💾 **Persistencia de datos**: Guarda configuración y progreso automáticamente
-- 🎨 **Diseño responsive**: Optimizado para dispositivos móviles
+- 🎨 **Diseño responsive**: Optimizado para dispositivos móviles con header consistente
 - 🎯 **15 categorías**: Lugares, Navidad, Animales, Comida, Objetos, Películas, Deportes, Oficina, Familia, Viajes, Amigos, Profesiones, Tecnología, Música, Hobbies
 - 🎭 **Configuración flexible**: 1-5 impostores, múltiples categorías simultáneas
+- ⏱️ **Límite de tiempo**: Configurable de 1-10 minutos o sin límite
+- 💡 **Sistema de pistas**: Pistas opcionales y sutiles para el impostor
+- 🔀 **Categoría al impostor**: Opción para mostrar u ocultar la categoría
 - 🗳️ **Sistema de votación**: Debate y votación con contador de votos
+- 📊 **Resultados detallados**: Muestra quién votó a quién y revela roles
+- 🎓 **Cómo jugar**: Sección integrada con instrucciones del juego
 - ⚡ **Optimizado**: Imágenes comprimidas, carga rápida
 - 🔄 **Actualización automática**: Notifica cuando hay nueva versión disponible
 
 ## 🎮 Cómo jugar
 
 1. **Configuración**: 
-   - Elige el número de jugadores (3-12)
+   - Elige el número de jugadores (3-15)
    - Selecciona cuántos impostores habrá (1-5)
    - Elige una o más categorías
-   - Opcionalmente, muestra la categoría al impostor
-   - Ingresa los nombres de los jugadores
+   - Configura límite de tiempo (opcional, 1-10 minutos)
+   - Activa/desactiva mostrar categoría al impostor
+   - Activa/desactiva pistas para el impostor
+   - Personaliza los nombres de jugadores (opcional)
 
 2. **Revelación de roles**:
    - Cada jugador toca su nombre para ver su palabra secreta
    - Los ciudadanos reciben una palabra de la categoría
-   - Los impostores no conocen la palabra (o solo la categoría)
+   - Los impostores ven solo la categoría (si está habilitado) y opcionalmente una pista sutil
    - Una vez todos vieron su rol, comienza el debate
 
-3. **Votación**:
+3. **Debate y Votación**:
+   - Los jugadores se turnan para dar pistas sobre su palabra
    - Discutan sobre quién creen que es el impostor
+   - Si hay límite de tiempo, un contador mostrará el tiempo restante
    - Cada jugador vota por un sospechoso
    - Se pueden deshacer votos antes de finalizar
 
 4. **Resultados**:
-   - Se revelan los impostores reales
+   - Se revelan los impostores reales y los votos
    - Ganan los ciudadanos si votan correctamente al impostor
-   - Gana el impostor si no es descubierto
+   - Gana el impostor si no es descubierto o hay empate
 
 ## 📲 Cómo instalar la app
 
@@ -112,14 +121,13 @@ La app puede ser desplegada en cualquier hosting estático:
 ```
 Impostor/
 ├── index.html              # Página principal HTML
-├── app.js                 # Lógica completa del juego (716 líneas)
-├── style.css              # Estilos responsive (592 líneas)
+├── app.js                 # Lógica completa del juego (1000+ líneas)
+├── style.css              # Estilos responsive (777 líneas)
 ├── manifest.json          # Configuración PWA
-├── sw.js                  # Service Worker v2 (cache-first strategy)
-├── generate_icons.py      # Script para generar iconos PWA
-├── optimize_images.py     # Script de optimización de imágenes
+├── sw.js                  # Service Worker (cache-first strategy)
+├── README.md              # Documentación del proyecto
 └── assets/
-    ├── icons/             # Iconos PWA en 8 tamaños
+    ├── icons/             # Iconos PWA en múltiples tamaños
     │   ├── icon-72x72.png
     │   ├── icon-96x96.png
     │   ├── icon-128x128.png
@@ -128,8 +136,8 @@ Impostor/
     │   ├── icon-192x192.png
     │   ├── icon-384x384.png
     │   └── icon-512x512.png
-    ├── logo_laundry_impostor.png    # Logo principal (175.87 KB)
-    └── logo_impostor_header.png     # Logo header (46.44 KB)
+    ├── logo_laundry_impostor.png    # Logo principal pantalla de inicio
+    └── logo_impostor_header.png     # Logo para header de navegación
 ```
 
 ## 🎨 Características de diseño
@@ -139,31 +147,19 @@ Impostor/
   - Color primario: `#b7202f` (rojo corporativo)
   - Header: `#000000` (negro)
   - Secundario: `#f5e8d3` (beige claro)
-  - Textos: `#2c2416`, `#6b5844`
-
+  - Éxito: `#d4edda` (verde suave)
+  - Advertencia: `#fff3cd` (amarillo suave)
+- **Tipografía**: Inter (sistema) con fallback a Arial
+- **Iconos**: Emojis nativos para máxima compatibilidad
+- **Animaciones**: Transiciones suaves y animaciones de entrada
+- **Switches**: Estilo iOS moderno para toggles
+- **Cards**: Bordes redondeados y sombras sutiles
+- **Header consistente**: Logo y botón de retroceso en todas las pantallas
 - **Tipografía**: System fonts optimizadas para cada plataforma
-- **Layout**: Full viewport, flexbox, diseño vertical
-- **Scroll personalizado**: Barras de scroll en color rojo corporativo
-- **Animaciones**: Transiciones suaves en botones y cards
-- **Responsive**: Adapta cantidad de columnas según jugadores
-
-## 🔧 Scripts de utilidades
-
-### Regenerar iconos PWA
-
-```bash
-python generate_icons.py
-```
-
-Genera todos los tamaños de iconos necesarios (72px a 512px) desde el logo principal.
-
-### Optimizar imágenes
-
-```bash
-python optimize_images.py
-```
-
-Comprime imágenes PNG manteniendo calidad visual. En la última optimización se redujo 68.54 KB (23.6%).
+- **Layout**: Full viewport con flexbox, diseño vertical optimizado
+- **Scroll personalizado**: Barras de scroll estilizadas
+- **Animaciones**: Transiciones suaves de 0.2-0.3s
+- **Responsive**: Adapta columnas y tamaños según número de jugadores (3-15)
 
 ## 🎯 Características técnicas avanzadas
 
@@ -171,16 +167,30 @@ Comprime imágenes PNG manteniendo calidad visual. En la última optimización s
 - Estado global con persistencia automática en `localStorage`
 - Guardado automático al cambiar configuración o progreso
 - Recuperación de partida al recargar la página
+- Manejo de configuraciones: límite de tiempo, pistas, categorías
 
 ### Scroll inteligente
-- Preservación de posición al actualizar listas
-- Implementado en selección de categorías y votación
-- Evita saltos molestos durante la interacción
+- Preservación de posición al actualizar listas dinámicamente
+- Implementado en selección de categorías, votación y configuración
+- Evita saltos molestos durante interacción con switches/toggles
 
 ### UI adaptativa
-- Cards de jugadores se adaptan según cantidad (2-3 columnas)
-- Tamaños `normal`, `compact`, y `mini` para 3-12 jugadores
+- Cards de jugadores adaptan columnas según cantidad (2-3 columnas)
+- Tamaños `normal`, `compact`, y `mini` para 3-15 jugadores
 - Fuentes adaptativas según cantidad de categorías seleccionadas
+- Header global con navegación consistente en todas las pantallas
+
+### Sistema de temporizador
+- Countdown visual con actualización por segundo
+- Cambio de color cuando quedan menos de 60 segundos
+- Modal automático al terminar el tiempo
+- Limpieza automática de intervalos
+
+### Base de datos de palabras
+- 15 categorías con 20 palabras cada una (300 palabras totales)
+- Base de datos de pistas sutiles y genéricas (300+ pistas)
+- Pistas diseñadas para no revelar directamente la palabra
+- Sistema configurable para mostrar/ocultar pistas y categoría
 
 ### Service Worker
 - Estrategia Cache First para máxima velocidad

@@ -5,6 +5,9 @@ const state = {
     modo: 'palabras',
     categoria: 'Lugares',
     mostrarCategoriaImpostor: true,
+    mostrarPistaImpostor: false,
+    tiempoLimiteHabilitado: false,
+    tiempoLimiteMinutos: 3,
     categorias: ['Lugares', 'Navidad', 'Animales', 'Comida', 'Objetos', 'Películas', 'Deportes', 'Oficina', 'Familia', 'Viajes', 'Amigos', 'Profesiones', 'Tecnología', 'Música', 'Hobbies'],
     categoriasEmojis: {
         'Lugares': '🏛️',
@@ -27,11 +30,15 @@ const state = {
     nombres: [],
     roles: [],
     palabraSecreta: '',
+    pistaSecreta: '',
     jugadorActual: 0,
     jugadoresVistos: [],
     votos: [],
     juegoTerminado: false,
-    nombresEditados: false
+    nombresEditados: false,
+    tiempoRestante: 0,
+    temporizadorActivo: false,
+    intervalId: null
 };
 
 // ==================== PERSISTENCIA DE DATOS ====================
@@ -54,6 +61,9 @@ function cargarEstado() {
             state.categoriasSeleccionadas = savedState.categoriasSeleccionadas || state.categoriasSeleccionadas;
             state.nombres = savedState.nombres || [];
             state.nombresEditados = savedState.nombresEditados || false;
+            state.tiempoLimiteHabilitado = savedState.tiempoLimiteHabilitado || false;
+            state.tiempoLimiteMinutos = savedState.tiempoLimiteMinutos || 3;
+            state.mostrarPistaImpostor = savedState.mostrarPistaImpostor || false;
         }
     } catch (e) {
         console.error('Error al cargar estado:', e);
@@ -67,6 +77,7 @@ function limpiarEstadoJuego() {
     state.jugadoresVistos = [];
     state.votos = [];
     state.juegoTerminado = false;
+    detenerTemporizador();
     guardarEstado();
 }
 
@@ -89,6 +100,40 @@ const palabrasPorCategoria = {
     'Hobbies': ['Lectura', 'Pintura', 'Dibujo', 'Jardinería', 'Cocina', 'Fotografía', 'Colección', 'Videojuegos', 'Ajedrez', 'Puzzle', 'Costura', 'Tejer', 'Origami', 'Danza', 'Canto', 'Escritura', 'Modelismo', 'Pesca', 'Camping', 'Meditación']
 };
 
+// Base de datos de pistas por palabra
+const pistasPorPalabra = {
+    // Lugares
+    'Plaza': 'Centro', 'Playa': 'Arena', 'Museo': 'Historia', 'Restaurante': 'Mesa', 'Hospital': 'Blanco', 'Escuela': 'Aprender', 'Parque': 'Verde', 'Biblioteca': 'Silencio', 'Cine': 'Oscuro', 'Aeropuerto': 'Viaje', 'Estación': 'Espera', 'Banco': 'Dinero', 'Teatro': 'Escenario', 'Gimnasio': 'Ejercicio', 'Mercado': 'Comprar', 'Hotel': 'Dormir', 'Casino': 'Juego', 'Iglesia': 'Rezar', 'Estadio': 'Grande', 'Universidad': 'Estudiar',
+    // Navidad
+    'Árbol': 'Verde', 'Regalo': 'Sorpresa', 'Nieve': 'Frío', 'Reno': 'Animal', 'Trineo': 'Desliza', 'Chimenea': 'Calor', 'Campana': 'Metal', 'Estrella': 'Brilla', 'Vela': 'Luz', 'Galleta': 'Dulce', 'Calcetín': 'Tela', 'Villancico': 'Cantar', 'Muérdago': 'Verde', 'Belén': 'Escena', 'Corona': 'Circular', 'Jengibre': 'Especias', 'Bastón': 'Dulce', 'Posada': 'Fiesta', 'Nochebuena': 'Noche',
+    // Animales
+    'Perro': 'Doméstico', 'Gato': 'Pelo', 'León': 'Grande', 'Elefante': 'Grande', 'Tigre': 'Rayas', 'Jirafa': 'Alto', 'Mono': 'Ágil', 'Oso': 'Pelo', 'Lobo': 'Salvaje', 'Zorro': 'Rápido', 'Caballo': 'Cuatro', 'Vaca': 'Granja', 'Cerdo': 'Rosa', 'Oveja': 'Blanco', 'Conejo': 'Orejas', 'Ratón': 'Pequeño', 'Pájaro': 'Vuela', 'Pez': 'Agua', 'Tiburón': 'Agua', 'Ballena': 'Enorme',
+    // Comida
+    'Pizza': 'Horno', 'Hamburguesa': 'Pan', 'Pasta': 'Harina', 'Sushi': 'Oriental', 'Tacos': 'Mexicano', 'Ensalada': 'Fresco', 'Sopa': 'Caliente', 'Pan': 'Harina', 'Queso': 'Lácteo', 'Pollo': 'Ave', 'Carne': 'Rojo', 'Pescado': 'Mar', 'Arroz': 'Blanco', 'Papas': 'Tierra', 'Helado': 'Frío', 'Chocolate': 'Dulce', 'Café': 'Caliente', 'Té': 'Infusión', 'Jugo': 'Líquido', 'Agua': 'Líquido',
+    // Objetos
+    'Mesa': 'Madera', 'Silla': 'Sentarse', 'Lápiz': 'Escribe', 'Libro': 'Papel', 'Teléfono': 'Hablar', 'Computadora': 'Pantalla', 'Reloj': 'Tiempo', 'Llave': 'Metal', 'Puerta': 'Entrada', 'Ventana': 'Ver', 'Cama': 'Dormir', 'Sofá': 'Sentarse', 'Lámpara': 'Luz', 'Espejo': 'Ver', 'Cuchillo': 'Corta', 'Plato': 'Come', 'Vaso': 'Beber', 'Botella': 'Líquido', 'Caja': 'Guardar', 'Bolsa': 'Llevar',
+    // Películas
+    'Titanic': 'Barco', 'Avatar': 'Ficción', 'Matrix': 'Futuro', 'Gladiador': 'Antiguo', 'Rocky': 'Boxeo', 'Alien': 'Espacio', 'Terminator': 'Robot', 'Superman': 'Héroe', 'Batman': 'Héroe', 'Spiderman': 'Héroe', 'Jumanji': 'Aventura', 'Coco': 'México', 'Frozen': 'Hielo', 'Shrek': 'Verde', 'Toy Story': 'Juguetes', 'Nemo': 'Pez', 'Up': 'Viejo',
+    // Deportes
+    'Fútbol': 'Equipo', 'Baloncesto': 'Alto', 'Tenis': 'Raqueta', 'Natación': 'Agua', 'Ciclismo': 'Ruedas', 'Boxeo': 'Golpes', 'Golf': 'Exterior', 'Béisbol': 'Bate', 'Volleyball': 'Red', 'Rugby': 'Físico', 'Hockey': 'Hielo', 'Esquí': 'Nieve', 'Surf': 'Olas', 'Atletismo': 'Correr', 'Gimnasia': 'Flexible', 'Yoga': 'Calma', 'Ping Pong': 'Mesa', 'Karate': 'Oriental', 'Escalada': 'Altura',
+    // Oficina
+    'Escritorio': 'Madera', 'Computadora': 'Digital', 'Impresora': 'Papel', 'Reunión': 'Gente', 'Café': 'Taza', 'Jefe': 'Autoridad', 'Empleado': 'Trabajo', 'Contrato': 'Firma', 'Proyecto': 'Trabajo', 'Presentación': 'Hablar', 'Email': 'Digital', 'Teléfono': 'Llamar', 'Carpeta': 'Organizar', 'Agenda': 'Fechas', 'Calculadora': 'Números', 'Grapadora': 'Juntar', 'Post-it': 'Papel', 'Pizarra': 'Escribir', 'Factura': 'Pago', 'Presupuesto': 'Números',
+    // Familia
+    'Madre': 'Mujer', 'Padre': 'Hombre', 'Hermano': 'Hombre', 'Hermana': 'Mujer', 'Hijo': 'Joven', 'Hija': 'Joven', 'Abuelo': 'Mayor', 'Abuela': 'Mayor', 'Tío': 'Hombre', 'Tía': 'Mujer', 'Primo': 'Parentesco', 'Prima': 'Parentesco', 'Sobrino': 'Joven', 'Sobrina': 'Joven', 'Nieto': 'Generación', 'Nieta': 'Generación', 'Suegro': 'Político', 'Suegra': 'Político', 'Cuñado': 'Político', 'Cuñada': 'Político',
+    // Viajes
+    'Maleta': 'Llevar', 'Pasaporte': 'Documento', 'Avión': 'Vuela', 'Hotel': 'Dormir', 'Mapa': 'Papel', 'Turista': 'Extranjero', 'Foto': 'Imagen', 'Recuerdo': 'Objeto', 'Guía': 'Persona', 'Ticket': 'Papel', 'Camping': 'Naturaleza', 'Crucero': 'Agua', 'Safari': 'África', 'Mochila': 'Llevar', 'Visa': 'Documento', 'Itinerario': 'Plan', 'Hostal': 'Económico', 'Excursión': 'Grupo', 'Aduana': 'Frontera', 'Equipaje': 'Llevar',
+    // Amigos
+    'Fiesta': 'Alegría', 'Risa': 'Sonido', 'Confianza': 'Sentimiento', 'Secreto': 'Privado', 'Apoyo': 'Ayudar', 'Diversión': 'Alegría', 'Juego': 'Actividad', 'Abrazo': 'Contacto', 'Saludo': 'Gesto', 'Broma': 'Risa', 'Charla': 'Hablar', 'Reunión': 'Grupo', 'Paseo': 'Caminar', 'Aventura': 'Emoción', 'Recuerdo': 'Memoria', 'Lealtad': 'Valor', 'Compañía': 'Estar', 'Ayuda': 'Acción', 'Consejo': 'Palabras', 'Celebración': 'Evento',
+    // Profesiones
+    'Doctor': 'Salud', 'Profesor': 'Enseñar', 'Ingeniero': 'Técnico', 'Chef': 'Cocina', 'Abogado': 'Leyes', 'Arquitecto': 'Edificios', 'Enfermero': 'Salud', 'Policía': 'Orden', 'Bombero': 'Fuego', 'Piloto': 'Vuela', 'Carpintero': 'Madera', 'Electricista': 'Luz', 'Plomero': 'Agua', 'Artista': 'Crear', 'Músico': 'Sonido', 'Escritor': 'Palabras', 'Periodista': 'Noticias', 'Fotógrafo': 'Imagen', 'Diseñador': 'Crear', 'Científico': 'Investigar',
+    // Tecnología
+    'Celular': 'Portátil', 'Tablet': 'Pantalla', 'Laptop': 'Portátil', 'Internet': 'Red', 'WiFi': 'Conexión', 'App': 'Software', 'Software': 'Digital', 'Hardware': 'Físico', 'Router': 'Red', 'Mouse': 'Mano', 'Teclado': 'Letras', 'Monitor': 'Ver', 'Auriculares': 'Escuchar', 'Cámara': 'Foto', 'Dron': 'Vuela', 'Smartwatch': 'Tiempo', 'USB': 'Conectar', 'Bluetooth': 'Conexión', 'Cloud': 'Datos', 'Password': 'Seguridad',
+    // Música
+    'Piano': 'Teclas', 'Guitarra': 'Cuerdas', 'Batería': 'Golpear', 'Violín': 'Cuerdas', 'Trompeta': 'Metal', 'Saxofón': 'Metal', 'Flauta': 'Soplar', 'Canción': 'Palabras', 'Concierto': 'Evento', 'Banda': 'Grupo', 'Ritmo': 'Pulso', 'Melodía': 'Sonido', 'Nota': 'Música', 'Acorde': 'Música', 'Letra': 'Palabras', 'Micrófono': 'Voz', 'Amplificador': 'Volumen', 'DJ': 'Música', 'Playlist': 'Lista', 'Festival': 'Grande',
+    // Hobbies
+    'Lectura': 'Texto', 'Pintura': 'Color', 'Dibujo': 'Lápiz', 'Jardinería': 'Plantas', 'Cocina': 'Alimentos', 'Fotografía': 'Imagen', 'Colección': 'Juntar', 'Videojuegos': 'Pantalla', 'Ajedrez': 'Estrategia', 'Puzzle': 'Piezas', 'Costura': 'Tela', 'Tejer': 'Hilo', 'Origami': 'Papel', 'Danza': 'Movimiento', 'Canto': 'Voz', 'Escritura': 'Texto', 'Modelismo': 'Pequeño', 'Pesca': 'Paciencia', 'Camping': 'Exterior', 'Meditación': 'Silencio'
+};
+
 // ==================== HELPERS / COMPONENTES ====================
 const UI = {
     render: (html) => {
@@ -100,6 +145,16 @@ const UI = {
     `,
     
     card: (content, maxWidth = '420px') => `
+        <div class="card" style="max-width:${maxWidth};position:relative;">
+            ${content}
+        </div>
+    `,
+    
+    cardWithHeader: (content, showBackButton = false, onBack = '', maxWidth = '420px') => `
+        ${showBackButton || !showBackButton ? `<div class="app-header">
+            ${showBackButton ? `<button onclick="${onBack}" class="header-back-btn">←</button>` : ''}
+            <img src="assets/logo_impostor_header.png" alt="Impostor" class="header-logo">
+        </div>` : ''}
         <div class="card" style="max-width:${maxWidth};position:relative;">
             ${content}
         </div>
@@ -186,13 +241,6 @@ const UI = {
             <div style="font-size:1.1rem;font-weight:500;color:#2c2416;flex:1;text-align:left;">${categoria}</div>
             ${isSelected ? '<div style="font-size:1.5rem;color:#b7202f;">✓</div>' : ''}
         </div>
-    `,
-    
-    header: (showBackButton = false, onBack = '') => `
-        <div class="app-header">
-            ${showBackButton ? `<button onclick="${onBack}" class="header-back-btn">←</button>` : ''}
-            <img src="assets/logo_impostor_header.png" alt="Impostor" class="header-logo">
-        </div>
     `
 };
 
@@ -200,9 +248,9 @@ const UI = {
 function renderWelcome() {
     document.body.style.background = '#000';
     
-    // Mostrar botón de instalación en la pantalla de bienvenida
-    if (window.showInstallButtonIfAvailable) {
-        window.showInstallButtonIfAvailable();
+    // Mostrar botón de instalación solo si no está instalada
+    if (window.showInstallButtonOnWelcome) {
+        window.showInstallButtonOnWelcome();
     }
     
     const content = `
@@ -213,20 +261,92 @@ function renderWelcome() {
         </div>
         ${UI.title('Impostor')}
         ${UI.subtitle('Juego de palabras')}
-        <div style="color:#fff;font-size:1.1rem;margin-bottom:32px;">
+        <div style="color:#fff;font-size:1.1rem;margin-bottom:32px;padding:0 20px;">
             Un juego de fiesta con ideas ocultas y pistas astutas
         </div>
         <button onclick="renderConfig()" class="btn-primary" style="max-width:280px;display:block;margin:0 auto;">Empezar</button>
+        <button onclick="renderComoJugar()" style="max-width:280px;width:100%;display:block;margin:16px auto 0 auto;background:#fff;color:#b7202f;border:2px solid #b7202f;border-radius:20px;padding:18px 0;font-size:1.1rem;font-weight:bold;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 16px rgba(255,255,255,0.3);" onmouseover="this.style.transform='scale(0.98)'" onmouseout="this.style.transform='scale(1)'">¿Cómo jugar?</button>
     `;
     
     UI.render(`<div class="card card-centered welcome-screen" style="max-width:450px;position:relative;">${content}</div>`);
 }
 
+// ==================== PANTALLA: CÓMO JUGAR ====================
+function renderComoJugar() {
+    document.body.style.background = '#fef6ea';
+    
+    // Ocultar botón de instalación
+    if (window.hideInstallButton) {
+        window.hideInstallButton();
+    }
+    
+    const content = `
+        <div style="flex:1;overflow-y:auto;padding:20px;">
+            ${UI.title('Cómo jugar')}
+            
+            <div style="display:flex;flex-direction:column;gap:20px;margin-top:24px;">
+                <!-- Card 1: Configurar Juego -->
+                <div style="background:#fff;border-radius:20px;padding:24px;box-shadow:0 4px 12px rgba(0,0,0,0.08);display:flex;gap:20px;align-items:flex-start;">
+                    <div style="background:#b7202f;width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <span style="font-size:28px;color:#fff;">⚙️</span>
+                    </div>
+                    <div style="flex:1;">
+                        <h3 style="color:#b7202f;margin:0 0 8px 0;font-size:1.3rem;">Configurar Juego</h3>
+                        <p style="color:#6b5844;margin:0;line-height:1.5;font-size:0.95rem;">Elige jugadores y categorías de palabras. ¡Un jugador será el impostor secreto!</p>
+                    </div>
+                </div>
+                
+                <!-- Card 2: Revelar Palabras -->
+                <div style="background:#fff;border-radius:20px;padding:24px;box-shadow:0 4px 12px rgba(0,0,0,0.08);display:flex;gap:20px;align-items:flex-start;">
+                    <div style="background:#b7202f;width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <span style="font-size:28px;color:#fff;">👁️</span>
+                    </div>
+                    <div style="flex:1;">
+                        <h3 style="color:#b7202f;margin:0 0 8px 0;font-size:1.3rem;">Revelar Palabras</h3>
+                        <p style="color:#6b5844;margin:0;line-height:1.5;font-size:0.95rem;">Todos ven su palabra excepto el impostor - ellos solo ven la categoría.</p>
+                    </div>
+                </div>
+                
+                <!-- Card 3: Dar Pistas -->
+                <div style="background:#fff;border-radius:20px;padding:24px;box-shadow:0 4px 12px rgba(0,0,0,0.08);display:flex;gap:20px;align-items:flex-start;">
+                    <div style="background:#b7202f;width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <span style="font-size:28px;color:#fff;">💬</span>
+                    </div>
+                    <div style="flex:1;">
+                        <h3 style="color:#b7202f;margin:0 0 8px 0;font-size:1.3rem;">Dar Pistas</h3>
+                        <p style="color:#6b5844;margin:0;line-height:1.5;font-size:0.95rem;">Túrnense para decir palabras relacionadas con su secreto. ¡Traten de no ser demasiado obvios!</p>
+                    </div>
+                </div>
+                
+                <!-- Card 4: Encontrar al Impostor -->
+                <div style="background:#fff;border-radius:20px;padding:24px;box-shadow:0 4px 12px rgba(0,0,0,0.08);display:flex;gap:20px;align-items:flex-start;">
+                    <div style="background:#b7202f;width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <span style="font-size:28px;color:#fff;">🔍</span>
+                    </div>
+                    <div style="flex:1;">
+                        <h3 style="color:#b7202f;margin:0 0 8px 0;font-size:1.3rem;">Encontrar al Impostor</h3>
+                        <p style="color:#6b5844;margin:0;line-height:1.5;font-size:0.95rem;">Discutan y voten sobre quién no conoce la palabra. ¡Si se equivocan, gana el impostor!</p>
+                    </div>
+                </div>
+                
+                <!-- Consejo Profesional -->
+                <div style="background:linear-gradient(135deg, #b7202f 0%, #8b1821 100%);border-radius:20px;padding:24px;text-align:center;margin-top:8px;">
+                    <div style="font-size:2.5rem;margin-bottom:12px;">💡</div>
+                    <h3 style="color:#ffd700;margin:0 0 12px 0;font-size:1.4rem;font-weight:bold;">Consejo Profesional</h3>
+                    <p style="color:#fff;margin:0;line-height:1.6;font-size:1rem;">Los impostores deben escuchar atentamente y tratar de integrarse. ¡Den pistas que podrían encajar en la categoría!</p>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    UI.render(UI.cardWithHeader(content, true, 'renderWelcome()'));
+}
+
 // ==================== PANTALLA: CONFIGURACIÓN ====================
 function renderConfig() {
     // Ocultar botón de instalación cuando se sale de la pantalla de bienvenida
-    if (window.hideInstallButtonTemp) {
-        window.hideInstallButtonTemp();
+    if (window.hideInstallButton) {
+        window.hideInstallButton();
     }
     document.body.style.background = '#fef6ea';
     
@@ -244,9 +364,9 @@ function renderConfig() {
         }
     }
     
+    const tiempoTexto = state.tiempoLimiteHabilitado ? `${state.tiempoLimiteMinutos} min` : 'Sin límite';
+    
     const content = `
-        ${UI.header(true, 'renderWelcome()')}
-        
         <div style="flex:1;display:flex;flex-direction:column;padding:20px;overflow:hidden;">
             <div style="flex:1;overflow-y:auto;padding-right:8px;">
                 ${UI.title('Configuración del juego')}
@@ -260,10 +380,26 @@ function renderConfig() {
                     ${UI.configButtonCustom('Categorías', categoriasTexto, 'renderSeleccionCategorias()', categoriasFontSize)}
                 </div>
                 
-                <div style="margin:24px 0 0 0;display:flex;align-items:center;gap:12px;">
-                    <label style="color:#6b5844;font-size:1rem;">Mostrar categoría al impostor</label>
-                    <input type="checkbox" id="mostrarCat" ${state.mostrarCategoriaImpostor ? 'checked' : ''} 
-                           onchange="toggleMostrarCategoria()" class="checkbox">
+                <div style="margin:24px 0 12px 0;">
+                    ${UI.configButton('⏱️ Límite de tiempo', tiempoTexto, 'renderConfiguracionTiempo()')}
+                </div>
+                
+                <div style="margin:24px 0 0 0;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                    <label for="mostrarCat" style="color:#6b5844;font-size:1rem;cursor:pointer;flex:1;">Mostrar categoría al impostor</label>
+                    <label class="switch">
+                        <input type="checkbox" id="mostrarCat" ${state.mostrarCategoriaImpostor ? 'checked' : ''} 
+                               onchange="toggleMostrarCategoria()">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                
+                <div style="margin:16px 0 0 0;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                    <label for="mostrarPista" style="color:#6b5844;font-size:1rem;cursor:pointer;flex:1;">Mostrar pista al impostor</label>
+                    <label class="switch">
+                        <input type="checkbox" id="mostrarPista" ${state.mostrarPistaImpostor ? 'checked' : ''} 
+                               onchange="toggleMostrarPista()">
+                        <span class="slider"></span>
+                    </label>
                 </div>
             </div>
             
@@ -273,18 +409,21 @@ function renderConfig() {
         </div>
     `;
     
-    UI.render(UI.card(content));
+    UI.render(UI.cardWithHeader(content, true, 'renderWelcome()'));
 }
 
 // ==================== PANTALLA: SELECCIÓN DE CATEGORÍAS ====================
 function renderSeleccionCategorias() {
+    // Ocultar botón de instalación
+    if (window.hideInstallButton) {
+        window.hideInstallButton();
+    }
+    
     // Guardar posición del scroll antes de re-renderizar
     const scrollContainer = document.querySelector('.categories-scroll-container');
     const scrollPos = scrollContainer ? scrollContainer.scrollTop : 0;
     
     const content = `
-        ${UI.header(true, 'confirmarCategorias()')}
-        
         <div style="flex:1;display:flex;flex-direction:column;padding:20px;overflow:hidden;">
             <div style="flex-shrink:0;">
                 ${UI.title('Seleccionar Categorías')}
@@ -311,7 +450,7 @@ function renderSeleccionCategorias() {
         </div>
     `;
     
-    UI.render(UI.card(content));
+    UI.render(UI.cardWithHeader(content, true, 'confirmarCategorias()'));
     
     // Restaurar posición del scroll después de re-renderizar
     if (scrollPos > 0) {
@@ -326,6 +465,11 @@ function renderSeleccionCategorias() {
 
 // ==================== PANTALLA: SELECCIÓN DE JUGADORES ====================
 function renderJugadores() {
+    // Ocultar botón de instalación
+    if (window.hideInstallButton) {
+        window.hideInstallButton();
+    }
+    
     // Determinar columnas y clase de tamaño según cantidad de jugadores
     let gridCols, sizeClass, gap;
     if (state.jugadores <= 4) {
@@ -347,14 +491,12 @@ function renderJugadores() {
     }
     
     const content = `
-        ${UI.header(true, 'renderConfig()')}
-        
         <div style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;">
             ${UI.title('Jugadores')}
         
         ${state.jugadoresVistos.length === state.jugadores ? 
             `<div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;">
-                <div style="padding:24px;background:#d4edda;border-radius:16px;color:#155724;font-size:1.1rem;text-align:center;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,0.1);max-width:400px;">
+                <div style="padding:40px 32px;background:#d4edda;border-radius:20px;color:#155724;font-size:1.8rem;text-align:center;font-weight:700;box-shadow:0 6px 20px rgba(0,0,0,0.15);max-width:500px;line-height:1.4;">
                     ✓ Todos los jugadores vieron su rol
                 </div>
             </div>
@@ -366,7 +508,7 @@ function renderJugadores() {
                 Toca tu nombre para revelar tu palabra y luego pasa el dispositivo al siguiente jugador.
             </div>
             
-            <div style="display:grid;grid-template-columns:${gridCols};gap:${gap};flex:1;align-content:center;padding:4px 0;">
+            <div style="display:grid;grid-template-columns:${gridCols};gap:${gap};flex:1;align-content:start;padding:4px 0;">
                 ${state.nombres.map((nombre, i) => 
                     UI.playerRevealCard(i, nombre, `revelarRol(${i})`, state.jugadoresVistos.includes(i), sizeClass)
                 ).join('')}
@@ -374,51 +516,80 @@ function renderJugadores() {
         </div>
     `;
     
-    UI.render(UI.card(content));
+    UI.render(UI.cardWithHeader(content, false, ''));
 }
 
 // ==================== PANTALLA: REVELACIÓN DE ROL ====================
 function renderRevelacion(jugadorIndex) {
+    // Ocultar botón de instalación
+    if (window.hideInstallButton) {
+        window.hideInstallButton();
+    }
+    
     const esImpostor = state.roles[jugadorIndex] === 'impostor';
     const nombre = state.nombres[jugadorIndex];
     
     const content = `
-        ${UI.header(true, 'renderJugadores()')}
-        
         <div style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;justify-content:center;">
             ${UI.title(`Hola, ${nombre}`)}
         
-        <div style="margin:32px 0 16px 0;color:#b7202f;font-size:1rem;">
-            La palabra para ${nombre}
-        </div>
-        
-        <div style="font-size:1.5rem;font-weight:bold;margin-bottom:24px;">
+        ${!esImpostor || state.mostrarCategoriaImpostor ? `<div style="font-size:1.5rem;font-weight:bold;margin:32px 0 16px 0;">
             Categoría: ${state.categoria}
-        </div>
+        </div>` : ''}
+        
+        ${!esImpostor ? `<div style="margin:0 0 24px 0;color:#b7202f;font-size:1rem;">
+            Tu palabra es:
+        </div>` : (state.mostrarPistaImpostor ? `<div style="margin:0 0 16px 0;color:#b7202f;font-size:1rem;">
+            💡 Pista:
+        </div>` : '<div style="margin:0 0 24px 0;"></div>')}
+        
+        ${esImpostor && state.mostrarPistaImpostor ? `
+            <div style="margin-bottom:20px;padding:16px;background:#fff3cd;border-radius:12px;border:2px solid #ffc107;">
+                <div style="color:#856404;font-size:1rem;line-height:1.6;text-align:center;">${state.pistaSecreta}</div>
+            </div>
+        ` : ''}
         
         <div class="reveal-card ${esImpostor ? 'impostor' : 'ciudadano'}">
-            ${esImpostor ? 'Impostor' : state.palabraSecreta}
+            ${esImpostor ? 'Eres el Impostor!' : state.palabraSecreta}
         </div>
         
         ${UI.primaryButton('¡Entendido!', 'renderJugadores()')}
         </div>
     `;
     
-    UI.render(UI.card(content, '450px'));
+    UI.render(UI.cardWithHeader(content, true, 'renderJugadores()', '450px'));
 }
 
 // ==================== PANTALLA: VOTACIÓN ====================
 function renderVotacion() {
+    // Ocultar botón de instalación
+    if (window.hideInstallButton) {
+        window.hideInstallButton();
+    }
+    
     // Guardar posición del scroll antes de re-renderizar
     const scrollContainer = document.querySelector('.votes-scroll-container');
     const scrollPos = scrollContainer ? scrollContainer.scrollTop : 0;
     
+    // Calcular tiempo para display
+    let tiempoDisplay = '';
+    if (state.tiempoLimiteHabilitado && state.temporizadorActivo) {
+        const minutos = Math.floor(state.tiempoRestante / 60);
+        const segundos = state.tiempoRestante % 60;
+        tiempoDisplay = `${minutos}:${segundos.toString().padStart(2, '0')}`;
+    }
+    
     const content = `
-        ${UI.header(false)}
-        
         <div style="flex:1;display:flex;flex-direction:column;padding:20px;overflow:hidden;">
             <div style="flex-shrink:0;">
                 ${UI.title('Votación')}
+                
+                ${state.tiempoLimiteHabilitado ? `
+                    <div style="margin:16px 0;padding:16px;background:#f5e8d3;border-radius:16px;text-align:center;">
+                        <div style="color:#6b5844;font-size:0.9rem;margin-bottom:8px;">⏱️ Tiempo restante</div>
+                        <div id="temporizador-display" style="font-size:2.5rem;font-weight:bold;color:#2c2416;font-family:monospace;">${tiempoDisplay}</div>
+                    </div>
+                ` : ''}
                 
                 <div style="margin:12px 0 8px 0;color:#6b5844;font-size:0.95rem;text-align:center;line-height:1.4;">
                     Discutan y voten por quien creen que es el impostor
@@ -437,19 +608,18 @@ function renderVotacion() {
             </div>
             
             <div style="flex-shrink:0;margin-top:12px;">
-                ${state.votos.length > 0 ? `
-                    <button onclick="deshacerVotacion()" class="btn-secondary" style="width:100%;max-width:400px;margin:0 auto 10px auto;display:block;">
-                        ↺ Deshacer votación
-                    </button>
-                ` : ''}
+                <button onclick="deshacerVotacion()" class="btn-secondary ${state.votos.length === 0 ? 'disabled' : ''}" ${state.votos.length === 0 ? 'disabled' : ''} style="width:100%;max-width:400px;margin:0 auto 10px auto;display:block;">
+                    ↺ Deshacer votación
+                </button>
                 
                 ${state.votos.length === state.jugadores ? 
-                    UI.primaryButton('Ver resultados', 'verResultados()') : ''}
+                    UI.primaryButton('Ver resultados', 'verResultados()') : 
+                    UI.primaryButtonDisabled('Ver resultados', 'Todos deben votar para continuar')}
             </div>
         </div>
     `;
     
-    UI.render(UI.card(content));
+    UI.render(UI.cardWithHeader(content, false, ''));
     
     // Restaurar posición del scroll después de re-renderizar
     requestAnimationFrame(() => {
@@ -462,6 +632,11 @@ function renderVotacion() {
 
 // ==================== PANTALLA: RESULTADOS ====================
 function renderResultados() {
+    // Ocultar botón de instalación
+    if (window.hideInstallButton) {
+        window.hideInstallButton();
+    }
+    
     // Contar votos
     const conteoVotos = {};
     state.votos.forEach(voto => {
@@ -503,8 +678,6 @@ function renderResultados() {
     const impostores = state.nombres.filter((_, i) => state.roles[i] === 'impostor');
     
     const content = `
-        ${UI.header(false)}
-        
         <div style="flex:1;display:flex;flex-direction:column;padding:20px;overflow:hidden;">
             <div style="flex-shrink:0;">
                 ${UI.title('Resultados')}
@@ -544,11 +717,16 @@ function renderResultados() {
         </div>
     `;
     
-    UI.render(UI.card(content));
+    UI.render(UI.cardWithHeader(content, false, ''));
 }
 
 // ==================== LÓGICA: INICIAR JUEGO ====================
 function iniciarJuego() {
+    // Inicializar nombres si no existen o no coinciden con la cantidad de jugadores
+    if (!state.nombres || state.nombres.length !== state.jugadores) {
+        state.nombres = Array.from({length: state.jugadores}, (_, i) => `Jugador ${i + 1}`);
+    }
+    
     // Asignar roles aleatorios
     state.roles = Array(state.jugadores).fill('ciudadano');
     state.jugadoresVistos = [];
@@ -567,6 +745,8 @@ function iniciarJuego() {
     // Luego seleccionar una palabra de esa categoría
     const palabrasCategoria = palabrasPorCategoria[categoriaAleatoria];
     state.palabraSecreta = palabrasCategoria[Math.floor(Math.random() * palabrasCategoria.length)];
+    // Obtener la pista correspondiente
+    state.pistaSecreta = pistasPorPalabra[state.palabraSecreta] || 'Pista no disponible';
     // Guardar la categoría seleccionada
     state.categoria = categoriaAleatoria;
     
@@ -582,6 +762,7 @@ function revelarRol(jugadorIndex) {
 
 function iniciarVotacion() {
     state.votos = [];
+    iniciarTemporizador();
     renderVotacion();
 }
 
@@ -599,6 +780,7 @@ function deshacerVotacion() {
 }
 
 function verResultados() {
+    detenerTemporizador();
     renderResultados();
 }
 
@@ -609,6 +791,11 @@ function nuevoJuego() {
 
 // ==================== PANTALLA: NOMBRES DE JUGADORES ====================
 function renderNombres() {
+    // Ocultar botón de instalación
+    if (window.hideInstallButton) {
+        window.hideInstallButton();
+    }
+    
     // Inicializar nombres si no existen
     if (!state.nombres || state.nombres.length !== state.jugadores) {
         state.nombres = Array.from({length: state.jugadores}, (_, i) => `Jugador ${i + 1}`);
@@ -618,8 +805,6 @@ function renderNombres() {
     state.nombresEditados = true;
     
     const content = `
-        ${UI.header(true, 'renderConfig()')}
-        
         <div style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;">
             ${UI.title('Nombres de jugadores')}
         
@@ -642,7 +827,7 @@ function renderNombres() {
         </div>
     `;
     
-    UI.render(UI.card(content));
+    UI.render(UI.cardWithHeader(content, true, 'renderConfig()'));
 }
 
 // ==================== LÓGICA: JUGADORES ====================
@@ -712,9 +897,167 @@ function confirmarCategorias() {
 }
 
 function toggleMostrarCategoria() {
+    // Guardar posición del scroll
+    const scrollContainer = document.querySelector('[style*="overflow-y:auto"]');
+    const scrollPos = scrollContainer ? scrollContainer.scrollTop : 0;
+    
     state.mostrarCategoriaImpostor = !state.mostrarCategoriaImpostor;
     guardarEstado();
     renderConfig();
+    
+    // Restaurar posición del scroll
+    requestAnimationFrame(() => {
+        const newScrollContainer = document.querySelector('[style*="overflow-y:auto"]');
+        if (newScrollContainer && scrollPos > 0) {
+            newScrollContainer.scrollTop = scrollPos;
+        }
+    });
+}
+
+function toggleMostrarPista() {
+    // Guardar posición del scroll
+    const scrollContainer = document.querySelector('[style*="overflow-y:auto"]');
+    const scrollPos = scrollContainer ? scrollContainer.scrollTop : 0;
+    
+    state.mostrarPistaImpostor = !state.mostrarPistaImpostor;
+    guardarEstado();
+    renderConfig();
+    
+    // Restaurar posición del scroll
+    requestAnimationFrame(() => {
+        const newScrollContainer = document.querySelector('[style*="overflow-y:auto"]');
+        if (newScrollContainer && scrollPos > 0) {
+            newScrollContainer.scrollTop = scrollPos;
+        }
+    });
+}
+
+// ==================== PANTALLA: CONFIGURACIÓN DE TIEMPO ====================
+function renderConfiguracionTiempo() {
+    // Ocultar botón de instalación
+    if (window.hideInstallButton) {
+        window.hideInstallButton();
+    }
+    
+    const content = `
+        <div style="flex:1;display:flex;flex-direction:column;padding:20px;overflow:hidden;">
+            <div style="flex:1;overflow-y:auto;padding-right:8px;">
+                ${UI.title('⏱️ Límite de tiempo')}
+                ${UI.subtitle('Configura el tiempo límite para el debate')}
+                
+                <div style="margin:32px 0 24px 0;display:flex;align-items:center;gap:12px;justify-content:center;padding:20px;background:#f5e8d3;border-radius:16px;">
+                    <input type="checkbox" id="habilitarTiempo" ${state.tiempoLimiteHabilitado ? 'checked' : ''} 
+                           onchange="toggleTiempoLimite()" class="checkbox" style="transform:scale(1.5);">
+                    <label for="habilitarTiempo" style="color:#2c2416;font-size:1.1rem;font-weight:600;cursor:pointer;" onclick="toggleTiempoLimite()">Habilitar límite de tiempo</label>
+                </div>
+                
+                ${state.tiempoLimiteHabilitado ? `
+                    <div style="margin:32px 0;">
+                        <div style="color:#6b5844;font-size:1rem;margin-bottom:16px;text-align:center;">Elige un límite entre 1 y 10 minutos</div>
+                        
+                        <div style="display:flex;flex-direction:column;gap:12px;max-width:600px;margin:0 auto;">
+                            ${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(minutos => `
+                                <div onclick="seleccionarTiempo(${minutos})" class="time-option ${state.tiempoLimiteMinutos === minutos ? 'selected' : ''}">
+                                    <span style="font-size:1.2rem;font-weight:600;">${minutos} Minuto${minutos > 1 ? 's' : ''}</span>
+                                    ${state.tiempoLimiteMinutos === minutos ? '<span style="font-size:1.5rem;color:#b7202f;">✓</span>' : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : `
+                    <div style="margin:32px 0;padding:20px;background:#fff3cd;border-radius:12px;text-align:center;">
+                        <div style="font-size:2rem;margin-bottom:8px;">⚠️</div>
+                        <div style="color:#856404;font-size:1rem;">Sin límite de tiempo habilitado. El debate será libre.</div>
+                    </div>
+                `}
+            </div>
+            
+            <div style="flex-shrink:0;margin-top:16px;">
+                ${UI.primaryButton('Confirmar', 'confirmarConfiguracionTiempo()')}
+            </div>
+        </div>
+    `;
+    
+    UI.render(UI.cardWithHeader(content, true, 'renderConfig()'));
+}
+
+function toggleTiempoLimite() {
+    state.tiempoLimiteHabilitado = !state.tiempoLimiteHabilitado;
+    guardarEstado();
+    renderConfiguracionTiempo();
+}
+
+function seleccionarTiempo(minutos) {
+    state.tiempoLimiteMinutos = minutos;
+    guardarEstado();
+    renderConfiguracionTiempo();
+}
+
+function confirmarConfiguracionTiempo() {
+    guardarEstado();
+    renderConfig();
+}
+
+// ==================== LÓGICA: TEMPORIZADOR ====================
+function iniciarTemporizador() {
+    if (state.tiempoLimiteHabilitado) {
+        state.tiempoRestante = state.tiempoLimiteMinutos * 60; // Convertir a segundos
+        state.temporizadorActivo = true;
+        
+        if (state.intervalId) {
+            clearInterval(state.intervalId);
+        }
+        
+        state.intervalId = setInterval(() => {
+            if (state.tiempoRestante > 0) {
+                state.tiempoRestante--;
+                actualizarDisplayTemporizador();
+            } else {
+                detenerTemporizador();
+                mostrarTiempoAgotado();
+            }
+        }, 1000);
+    }
+}
+
+function detenerTemporizador() {
+    if (state.intervalId) {
+        clearInterval(state.intervalId);
+        state.intervalId = null;
+    }
+    state.temporizadorActivo = false;
+    state.tiempoRestante = 0;
+}
+
+function actualizarDisplayTemporizador() {
+    const display = document.getElementById('temporizador-display');
+    if (display) {
+        const minutos = Math.floor(state.tiempoRestante / 60);
+        const segundos = state.tiempoRestante % 60;
+        display.textContent = `${minutos}:${segundos.toString().padStart(2, '0')}`;
+        
+        // Cambiar color si quedan menos de 60 segundos
+        if (state.tiempoRestante <= 60) {
+            display.style.color = '#b7202f';
+            display.style.animation = 'pulse 1s infinite';
+        }
+    }
+}
+
+function mostrarTiempoAgotado() {
+    // Mostrar modal de tiempo agotado
+    const modal = document.createElement('div');
+    modal.innerHTML = `
+        <div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:10000;display:flex;align-items:center;justify-content:center;animation:fadeIn 0.3s ease-out;">
+            <div style="background:#fff;border-radius:20px;padding:32px;max-width:90%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.3);animation:slideIn 0.3s ease-out;">
+                <div style="font-size:4rem;margin-bottom:16px;">⏰</div>
+                <h2 style="color:#b7202f;margin:0 0 12px 0;font-size:1.8rem;">¡Tiempo agotado!</h2>
+                <p style="color:#6b5844;margin:0 0 24px 0;font-size:1.1rem;">Es hora de votar</p>
+                <button onclick="this.parentElement.parentElement.remove()" class="btn-primary" style="max-width:200px;margin:0 auto;">Continuar</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
 }
 
 // ==================== INICIALIZACIÓN ====================
@@ -722,4 +1065,9 @@ window.onload = () => {
     // Cargar estado guardado
     cargarEstado();
     renderWelcome();
+};
+
+// Limpiar temporizador al cerrar la app
+window.onbeforeunload = () => {
+    detenerTemporizador();
 };
