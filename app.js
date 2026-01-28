@@ -8,8 +8,9 @@ const state = {
     mostrarPistaImpostor: false,
     tiempoLimiteHabilitado: false,
     tiempoLimiteMinutos: 3,
-    categorias: ['Lugares', 'Navidad', 'Animales', 'Comida', 'Objetos', 'Películas', 'Deportes', 'Oficina', 'Familia', 'Viajes', 'Amigos', 'Profesiones', 'Tecnología', 'Música', 'Hobbies'],
+    categorias: ['Aleatorio', 'Lugares', 'Navidad', 'Animales', 'Comida', 'Objetos', 'Películas', 'Deportes', 'Oficina', 'Familia', 'Viajes', 'Amigos', 'Profesiones', 'Tecnología', 'Música', 'Hobbies'],
     categoriasEmojis: {
+        'Aleatorio': '🎲',
         'Lugares': '🏛️',
         'Navidad': '🎄',
         'Animales': '🦁',
@@ -26,12 +27,13 @@ const state = {
         'Música': '🎵',
         'Hobbies': '🎨'
     },
-    categoriasSeleccionadas: ['Lugares'],
+    categoriasSeleccionadas: ['Aleatorio'],
     nombres: [],
     roles: [],
     palabraSecreta: '',
     pistaSecreta: '',
     jugadorActual: 0,
+    jugadorInicial: null, // Jugador que empieza la conversación
     jugadoresVistos: [],
     votos: [],
     juegoTerminado: false,
@@ -492,19 +494,9 @@ function renderJugadores() {
     
     const content = `
         <div style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;">
-            ${UI.title('Jugadores')}
+            ${UI.title('Revelar palabras')}
         
-        ${state.jugadoresVistos.length === state.jugadores ? 
-            `<div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;">
-                <div style="padding:40px 32px;background:#d4edda;border-radius:20px;color:#155724;font-size:1.8rem;text-align:center;font-weight:700;box-shadow:0 6px 20px rgba(0,0,0,0.15);max-width:500px;line-height:1.4;">
-                    ✓ Todos los jugadores vieron su rol
-                </div>
-            </div>
-            <div style="flex-shrink:0;margin-top:16px;">
-                ${UI.primaryButton('Iniciar debate y votación', 'iniciarVotacion()')}
-            </div>` 
-            : 
-            `<div style="margin:8px 0;color:#6b5844;font-size:0.9rem;text-align:center;flex-shrink:0;line-height:1.3;">
+            <div style="margin:8px 0;color:#6b5844;font-size:0.9rem;text-align:center;flex-shrink:0;line-height:1.3;">
                 Toca tu nombre para revelar tu palabra y luego pasa el dispositivo al siguiente jugador.
             </div>
             
@@ -512,11 +504,112 @@ function renderJugadores() {
                 ${state.nombres.map((nombre, i) => 
                     UI.playerRevealCard(i, nombre, `revelarRol(${i})`, state.jugadoresVistos.includes(i), sizeClass)
                 ).join('')}
-            </div>`}
+            </div>
         </div>
     `;
     
     UI.render(UI.cardWithHeader(content, false, ''));
+}
+
+// ==================== PANTALLA: INICIO DE DEBATE ====================
+function renderInicioDebate() {
+    // Ocultar botón de instalación
+    if (window.hideInstallButton) {
+        window.hideInstallButton();
+    }
+    
+    // Calcular tiempo inicial
+    const tiempoInicial = state.temporizadorActivo ? state.tiempoRestante : state.tiempoLimiteMinutos * 60;
+    const minutos = Math.floor(tiempoInicial / 60);
+    const segundos = tiempoInicial % 60;
+    const tiempoDisplay = `${minutos}:${segundos.toString().padStart(2, '0')}`;
+    
+    const content = `
+        <div style="flex:1;display:flex;flex-direction:column;padding:20px;">
+            ${UI.title('Dar pistas')}
+            
+            <div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:20px;">
+                <div style="padding:32px 24px;background:#d4edda;border-radius:20px;color:#155724;font-size:1.5rem;text-align:center;font-weight:700;box-shadow:0 6px 20px rgba(0,0,0,0.15);max-width:400px;min-width:280px;width:auto;line-height:1.4;margin:0 auto 18px auto;">
+                    ✓ Todos los jugadores vieron su rol
+                </div>
+                ${state.tiempoLimiteHabilitado ? `
+                <div style="padding:20px;background:#f5e8d3;border-radius:16px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.1);max-width:400px;min-width:280px;width:auto;margin:0 auto 18px auto;">
+                    <div style="color:#6b5844;font-size:0.95rem;font-weight:600;margin-bottom:8px;">⏱️ Tiempo restante</div>
+                    <div id="temporizador-display" style="font-size:2.5rem;font-weight:bold;color:#2c2416;">${tiempoDisplay}</div>
+                </div>` : ''}
+                <div style="padding:24px;background:#fff3cd;border-radius:16px;color:#856404;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.1);max-width:400px;min-width:280px;width:auto;margin:0 auto 24px auto;">
+                    <div style="font-size:1.1rem;font-weight:600;margin-bottom:8px;">Empieza la conversación:</div>
+                    <div style="font-size:1.8rem;font-weight:bold;color:#b7202f;">${state.nombres[state.jugadorInicial]}</div>
+                </div>
+            </div>
+            
+            <div style="flex-shrink:0;margin-top:16px;">
+                ${UI.primaryButton('Iniciar votación', 'iniciarVotacion()')}
+            </div>
+        </div>
+    `;
+    
+    UI.render(UI.cardWithHeader(content, false, ''));
+    
+    // Siempre reiniciar el temporizador y el tiempo al entrar a la pantalla de debate
+    if (state.tiempoLimiteHabilitado) {
+        detenerTemporizador();
+        state.tiempoRestante = state.tiempoLimiteMinutos * 60;
+        iniciarTemporizador();
+    }
+}
+
+// ==================== TEMPORIZADOR ====================
+function iniciarTemporizador() {
+    detenerTemporizador();
+    state.tiempoRestante = state.tiempoLimiteMinutos * 60;
+    state.temporizadorActivo = true;
+    actualizarDisplayTemporizador();
+    state.intervalId = setInterval(() => {
+        state.tiempoRestante--;
+        actualizarDisplayTemporizador();
+        if (state.tiempoRestante <= 0) {
+            detenerTemporizador();
+            // Mostrar alerta y continuar automáticamente
+            alert('⏰ ¡Se acabó el tiempo!');
+        }
+    }, 1000);
+}
+
+function actualizarDisplayTemporizador() {
+    // Actualizar display en pantalla de jugadores
+    const timerDisplay = document.getElementById('timer-display');
+    if (timerDisplay) {
+        const minutos = Math.floor(state.tiempoRestante / 60);
+        const segundos = state.tiempoRestante % 60;
+        timerDisplay.textContent = `${minutos}:${segundos.toString().padStart(2, '0')}`;
+        
+        // Cambiar color cuando quedan menos de 30 segundos
+        if (state.tiempoRestante <= 30) {
+            timerDisplay.style.color = '#b7202f';
+        }
+    }
+    
+    // Actualizar display en pantalla de votación
+    const temporizadorDisplay = document.getElementById('temporizador-display');
+    if (temporizadorDisplay) {
+        const minutos = Math.floor(state.tiempoRestante / 60);
+        const segundos = state.tiempoRestante % 60;
+        temporizadorDisplay.textContent = `${minutos}:${segundos.toString().padStart(2, '0')}`;
+        
+        // Cambiar color cuando quedan menos de 30 segundos
+        if (state.tiempoRestante <= 30) {
+            temporizadorDisplay.style.color = '#b7202f';
+        }
+    }
+}
+
+function detenerTemporizador() {
+    if (state.intervalId) {
+        clearInterval(state.intervalId);
+        state.intervalId = null;
+    }
+    state.temporizadorActivo = false;
 }
 
 // ==================== PANTALLA: REVELACIÓN DE ROL ====================
@@ -553,11 +646,11 @@ function renderRevelacion(jugadorIndex) {
             ${esImpostor ? 'Eres el Impostor!' : state.palabraSecreta}
         </div>
         
-        ${UI.primaryButton('¡Entendido!', 'renderJugadores()')}
+        ${UI.primaryButton('¡Entendido!', state.jugadoresVistos.length === state.jugadores ? 'renderInicioDebate()' : 'renderJugadores()')}
         </div>
     `;
     
-    UI.render(UI.cardWithHeader(content, true, 'renderJugadores()', '450px'));
+    UI.render(UI.cardWithHeader(content, true, state.jugadoresVistos.length === state.jugadores ? 'renderInicioDebate()' : 'renderJugadores()', '450px'));
 }
 
 // ==================== PANTALLA: VOTACIÓN ====================
@@ -582,7 +675,7 @@ function renderVotacion() {
     const content = `
         <div style="flex:1;display:flex;flex-direction:column;padding:20px;overflow:hidden;">
             <div style="flex-shrink:0;">
-                ${UI.title('Votación')}
+                ${UI.title('Encontrar al Impostor')}
                 
                 ${state.tiempoLimiteHabilitado ? `
                     <div style="margin:16px 0;padding:16px;background:#f5e8d3;border-radius:16px;text-align:center;">
@@ -688,7 +781,12 @@ function renderResultados() {
             </div>
             
             <div style="flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;">
-                <div style="margin:12px 0;padding:20px;background:#f5e8d3;border-radius:16px;">
+                <div style="margin:12px 0;padding:16px;background:#e5f5e5;border-radius:12px;">
+                    <div style="color:#2d7a2d;font-size:1rem;margin-bottom:8px;">La palabra secreta era:</div>
+                    <div style="color:#2c2416;font-size:1.5rem;font-weight:bold;">${state.palabraSecreta}</div>
+                </div>
+                
+                <div style="margin:16px 0 12px 0;padding:20px;background:#f5e8d3;border-radius:16px;">
                     <div style="color:#6b5844;font-size:1rem;margin-bottom:16px;text-align:left;">Votación:</div>
                     <table style="width:100%;border-collapse:collapse;">
                         ${state.nombres.map((nombre, i) => {
@@ -704,15 +802,11 @@ function renderResultados() {
                         }).join('')}
                     </table>
                 </div>
-                
-                <div style="margin:16px 0;padding:16px;background:#e5f5e5;border-radius:12px;">
-                    <div style="color:#2d7a2d;font-size:1rem;margin-bottom:8px;">La palabra secreta era:</div>
-                    <div style="color:#2c2416;font-size:1.5rem;font-weight:bold;">${state.palabraSecreta}</div>
-                </div>
             </div>
             
-            <div style="flex-shrink:0;margin-top:12px;">
-                ${UI.primaryButton('Nuevo juego', 'nuevoJuego()')}
+            <div style="flex-shrink:0;margin-top:12px;padding:0 0 env(safe-area-inset-bottom) 0;">
+                <button onclick="nuevaRonda()" class="btn-primary" style="width:100%;max-width:400px;margin:0 auto 12px auto;display:block;">Nueva ronda</button>
+                <button onclick="nuevoJuego()" class="btn-secondary" style="width:100%;max-width:400px;margin:0 auto;display:block;">Nuevo juego</button>
             </div>
         </div>
     `;
@@ -740,8 +834,15 @@ function iniciarJuego() {
     }
     
     // Seleccionar palabra secreta aleatoria de las categorías seleccionadas
+    let categoriasParaElegir = [...state.categoriasSeleccionadas];
+    
+    // Si "Aleatorio" está seleccionado, usar todas las categorías excepto "Aleatorio"
+    if (categoriasParaElegir.includes('Aleatorio')) {
+        categoriasParaElegir = state.categorias.filter(cat => cat !== 'Aleatorio');
+    }
+    
     // Primero seleccionar una categoría aleatoria
-    const categoriaAleatoria = state.categoriasSeleccionadas[Math.floor(Math.random() * state.categoriasSeleccionadas.length)];
+    const categoriaAleatoria = categoriasParaElegir[Math.floor(Math.random() * categoriasParaElegir.length)];
     // Luego seleccionar una palabra de esa categoría
     const palabrasCategoria = palabrasPorCategoria[categoriaAleatoria];
     state.palabraSecreta = palabrasCategoria[Math.floor(Math.random() * palabrasCategoria.length)];
@@ -749,6 +850,10 @@ function iniciarJuego() {
     state.pistaSecreta = pistasPorPalabra[state.palabraSecreta] || 'Pista no disponible';
     // Guardar la categoría seleccionada
     state.categoria = categoriaAleatoria;
+    
+    // Seleccionar jugador inicial (ciudadano aleatorio, nunca impostor)
+    const ciudadanos = state.roles.map((rol, idx) => rol === 'ciudadano' ? idx : null).filter(idx => idx !== null);
+    state.jugadorInicial = ciudadanos[Math.floor(Math.random() * ciudadanos.length)];
     
     renderJugadores();
 }
@@ -762,7 +867,12 @@ function revelarRol(jugadorIndex) {
 
 function iniciarVotacion() {
     state.votos = [];
-    iniciarTemporizador();
+    // Reiniciar el temporizador al iniciar la votación
+    if (state.tiempoLimiteHabilitado) {
+        detenerTemporizador();
+        state.tiempoRestante = state.tiempoLimiteMinutos * 60;
+        iniciarTemporizador();
+    }
     renderVotacion();
 }
 
@@ -787,6 +897,21 @@ function verResultados() {
 function nuevoJuego() {
     state.nombresEditados = false;
     renderConfig();
+}
+
+function nuevaRonda() {
+    // Reiniciar solo los datos de la partida, manteniendo configuración
+    state.roles = [];
+    state.palabraSecreta = '';
+    state.jugadorActual = 0;
+    state.jugadorInicial = null;
+    state.jugadoresVistos = [];
+    state.votos = [];
+    state.juegoTerminado = false;
+    guardarEstado();
+    
+    // Iniciar nueva partida directamente
+    iniciarJuego();
 }
 
 // ==================== PANTALLA: NOMBRES DE JUGADORES ====================
